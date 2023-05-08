@@ -1,0 +1,35 @@
+FROM registry.fedoraproject.org/fedora:latest
+
+ENV container=oci
+
+RUN dnf update -y; \
+    dnf install --setopt install_weak_deps=false -y systemd syncthing; \
+    dnf clean all -y; \
+    rm -rf  /var/cache /var/log/*; \
+
+    systemctl mask \
+              systemd-remount-fs.service \
+              dev-hugepages.mount \
+              sys-fs-fuse-connections.mount \
+              systemd-logind.service \
+              getty.target \
+              console-getty.service \
+              systemd-udev-trigger.service \
+              systemd-udevd.service \
+              systemd-random-seed.service \
+              systemd-machine-id-commit.service; \
+
+    useradd -m syncthing
+
+COPY data/syncthing/ /etc/systemd/system/syncthing@.service.d/
+
+RUN systemctl enable syncthing@syncthing.service
+
+EXPOSE 8384/tcp 22000/tcp 22000/udp 21027/udp
+
+VOLUME /home/syncthing/.config/syncthing \
+       /home/syncthing/data
+
+STOPSIGNAL SIGRTMIN+3
+
+CMD ["/sbin/init"]
