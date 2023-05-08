@@ -1,0 +1,54 @@
+FROM registry.fedoraproject.org/fedora:latest AS builder
+
+RUN dnf update -y; \
+    dnf install --setopt install_weak_deps=false -y wget; \
+    dnf clean all -y; \
+    rm -rf  /var/cache /var/log/*
+
+COPY data/hosts-bl/ /hosts-bl
+
+WORKDIR /hosts-bl
+
+ARG hosts_url=https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-social/hosts
+ARG name=blocklist.rpz
+
+RUN chmod +x hosts-bl; \
+    wget --quiet ${hosts_url}; \
+    ./hosts-bl -f rpz -i hosts -o ${name}.tmp; \
+    cat ${name}.template ${name}.tmp > ${name}
+
+FROM registry.fedoraproject.org/fedora:latest
+
+ENV container=oci
+
+RUN dnf update -y; \
+    dnf install --setopt install_weak_deps=false -y systemd unbound; \
+    dnf reinstall -y shadow-utils; \
+    dnf clean all -y; \
+    rm -rf  /var/cache /var/log/*; \
+
+    systemctl mask \
+              systemd-remount-fs.service \
+              dev-hugepages.mount \
+              sys-fs-fuse-connections.mount \
+              systemd-logind.service \
+              getty.target \
+              console-getty.service \
+              systemd-udev-trigger.service \
+              systemd-udevd.service \
+              systemd-random-seed.service \
+              systemd-machine-id-commit.service
+
+COPY data/unbound/ /etc/unbound/
+COPY --from=builder /hosts-bl/blocklist.rpz /etc/unbound/
+
+RUN chown root:unbound /etc/unbound/{blocklist,whitelist}.rpz; \
+    systemctl enable unbound.service
+
+EXPOSE 853/tcp 433/tcp 53/tcp 53/udp
+
+VOLUME /etc/unbound
+
+STOPSIGNAL SIGRTMIN+3
+
+ENTRYPOINT ["/sbin/init"]

@@ -1,0 +1,5 @@
+$TTL 30
+@ SOA rpz.localhost. hostmaster.localhost. 2305051804 300 1800 604800 30
+ NS localhost.
+
+; exampleentry.loclhost CNAME rpz-passtrough.
