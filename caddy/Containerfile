@@ -1,0 +1,35 @@
+FROM registry.fedoraproject.org/fedora:latest
+
+ENV container=oci
+
+RUN dnf update -y; \
+    dnf install --setopt install_weak_deps=false -y systemd caddy; \
+    dnf reinstall -y shadow-utils; \
+    dnf clean all -y; \
+    rm -rf  /var/cache /var/log/*; \
+
+    systemctl mask \
+    systemd-remount-fs.service \
+    dev-hugepages.mount \
+    sys-fs-fuse-connections.mount \
+    systemd-logind.service \
+    getty.target \
+    console-getty.service \
+    systemd-udev-trigger.service \
+    systemd-udevd.service \
+    systemd-random-seed.service \
+    systemd-machine-id-commit.service; \
+
+    systemctl enable caddy.service
+
+COPY data/caddy/ /etc/caddy/
+
+EXPOSE 80/tcp 443/tcp 443/udp
+
+VOLUME /var/lib/caddy/.local/share/caddy \
+       /var/lib/caddy/.config/caddy \
+       /etc/caddy/
+
+STOPSIGNAL SIGRTMIN+3
+
+ENTRYPOINT ["/sbin/init"]
