@@ -32,4 +32,4 @@ VOLUME /home/syncthing/.config/syncthing \
 
 STOPSIGNAL SIGRTMIN+3
 
-CMD ["/sbin/init"]
+ENTRYPOINT ["/sbin/init"]
